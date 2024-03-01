@@ -39,7 +39,7 @@ class RtcConfiguration:
         proto_room.IceTransportType.TRANSPORT_ALL
     continual_gathering_policy: proto_room.ContinualGatheringPolicy.ValueType = \
         proto_room.ContinualGatheringPolicy.GATHER_CONTINUALLY
-    ice_servers: list[proto_room.IceServer] = field(default_factory=list)
+    ice_servers: list = field(default_factory=list)
 
 
 @dataclass
@@ -130,7 +130,7 @@ class Room(EventEmitter):
             queue = ffi_client.queue.subscribe()
             resp = ffi_client.request(req)
             cb = await queue.wait_for(lambda e: e.connect.async_id ==
-                                      resp.connect.async_id)
+                                                resp.connect.async_id)
         finally:
             ffi_client.queue.unsubscribe(queue)
 
@@ -171,7 +171,7 @@ class Room(EventEmitter):
             queue = ffi_client.queue.subscribe()
             resp = ffi_client.request(req)
             await queue.wait_for(lambda e: e.disconnect.async_id ==
-                                 resp.disconnect.async_id)
+                                           resp.disconnect.async_id)
         finally:
             ffi_client.queue.unsubscribe(queue)
 
@@ -311,7 +311,7 @@ class Room(EventEmitter):
             native_data = ctypes.cast(buffer_info.data_ptr,
                                       ctypes.POINTER(ctypes.c_byte
                                                      * buffer_info.data_len)).contents
-            
+
             data = bytearray(native_data)
             FfiHandle(owned_buffer_info.handle.id)
             rparticipant = None
