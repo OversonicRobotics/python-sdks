@@ -89,14 +89,14 @@ class FfiQueue(Generic[T]):
                 loop.call_soon_threadsafe(queue.put_nowait, item)
 
     def subscribe(self, loop: Optional[asyncio.AbstractEventLoop] = None) \
-            -> Queue[T]:
+            -> Queue:
         with self._lock:
-            queue = Queue[T]()
+            queue = Queue()
             loop = loop or asyncio.get_event_loop()
             self._subscribers.append((queue, loop))
             return queue
 
-    def unsubscribe(self, queue: Queue[T]) -> None:
+    def unsubscribe(self, queue: Queue) -> None:
         with self._lock:
             # looping here is ok, since we don't expect a lot of subscribers
             for i, (q, _) in enumerate(self._subscribers):

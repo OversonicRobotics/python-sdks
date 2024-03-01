@@ -125,20 +125,20 @@ class PlanarYuv8Buffer(PlanarYuvBuffer):
         super().__init__(owned_info)
 
     @property
-    def data_y(self) -> ctypes.Array[ctypes.c_uint8]:
+    def data_y(self) -> ctypes.Array:
         arr = ctypes.cast(self._info.yuv.data_y_ptr, ctypes.POINTER(
             ctypes.c_uint8 * (self._info.yuv.stride_y * self._info.height))).contents
         return arr
 
     @property
-    def data_u(self) -> ctypes.Array[ctypes.c_uint8]:
+    def data_u(self) -> ctypes.Array:
         arr = ctypes.cast(self._info.yuv.data_u_ptr, ctypes.POINTER(
             ctypes.c_uint8 * (self._info.yuv.stride_u *
                               self._info.yuv.chroma_height))).contents
         return arr
 
     @property
-    def data_v(self) -> ctypes.Array[ctypes.c_uint8]:
+    def data_v(self) -> ctypes.Array:
         arr = ctypes.cast(self._info.yuv.data_v_ptr, ctypes.POINTER(
             ctypes.c_uint8 * (self._info.yuv.stride_v *
                               self._info.yuv.chroma_height))).contents
@@ -150,21 +150,21 @@ class PlanarYuv16Buffer(PlanarYuvBuffer):
         super().__init__(owned_info)
 
     @property
-    def data_y(self) -> ctypes.Array[ctypes.c_uint16]:
+    def data_y(self) -> ctypes.Array:
         arr = ctypes.cast(self._info.yuv.data_y_ptr, ctypes.POINTER(
             ctypes.c_uint16 * (self._info.yuv.stride_y // 2 *
                                self._info.height))).contents
         return arr
 
     @property
-    def data_u(self) -> ctypes.Array[ctypes.c_uint16]:
+    def data_u(self) -> ctypes.Array:
         arr = ctypes.cast(self._info.yuv.data_u_ptr, ctypes.POINTER(
             ctypes.c_uint16 * (self._info.yuv.stride_u // 2 *
                                self._info.yuv.chroma_height))).contents
         return arr
 
     @property
-    def data_v(self) -> ctypes.Array[ctypes.c_uint16]:
+    def data_v(self) -> ctypes.Array:
         arr = ctypes.cast(self._info.yuv.data_v_ptr, ctypes.POINTER(
             ctypes.c_uint16 * (self._info.yuv.stride_v // 2 *
                                self._info.yuv.chroma_height))).contents
@@ -176,13 +176,13 @@ class BiplanaraYuv8Buffer(VideoFrameBuffer):
         super().__init__(owned_info)
 
     @property
-    def data_y(self) -> ctypes.Array[ctypes.c_uint8]:
+    def data_y(self) -> ctypes.Array:
         arr = ctypes.cast(self._info.bi_yuv.data_y_ptr, ctypes.POINTER(
             ctypes.c_uint8 * (self._info.bi_yuv.stride_y * self._info.height))).contents
         return arr
 
     @property
-    def data_uv(self) -> ctypes.Array[ctypes.c_uint8]:
+    def data_uv(self) -> ctypes.Array:
         arr = ctypes.cast(self._info.bi_yuv.data_uv_ptr, ctypes.POINTER(
             ctypes.c_uint8 * (self._info.bi_yuv.stride_uv *
                               self._info.bi_yuv.chroma_height))).contents
@@ -199,7 +199,7 @@ class I420ABuffer(PlanarYuv8Buffer):
         super().__init__(owned_info)
 
     @property
-    def data_a(self) -> ctypes.Array[ctypes.c_uint8]:
+    def data_a(self) -> ctypes.Array:
         arr = ctypes.cast(self._info.yuv.data_a_ptr, ctypes.POINTER(
             ctypes.c_uint8 * (self._info.yuv.stride_a * self._info.height))).contents
         return arr
@@ -239,7 +239,7 @@ class ArgbFrame:
         self.width = width
         self.height = height
         self.data = (ctypes.c_uint8 * (width * height *
-                     ctypes.sizeof(ctypes.c_uint32)))()  # alloc frame
+                                       ctypes.sizeof(ctypes.c_uint32)))()  # alloc frame
 
     def to_i420(self) -> I420Buffer:
         # TODO(theomonnom): avoid unnecessary buffer allocation
