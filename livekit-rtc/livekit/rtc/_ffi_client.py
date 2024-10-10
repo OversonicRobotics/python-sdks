@@ -98,24 +98,24 @@ class FfiHandle:
 T = TypeVar("T")
 
 
-class FfiQueue(Generic[T]):
+class FfiQueue(Generic):
     def __init__(self) -> None:
         self._lock = threading.RLock()
-        self._subscribers: List[tuple[Queue[T], asyncio.AbstractEventLoop]] = []
+        self._subscribers: List[tuple[Queue, asyncio.AbstractEventLoop]] = []
 
     def put(self, item: T) -> None:
         with self._lock:
             for queue, loop in self._subscribers:
                 loop.call_soon_threadsafe(queue.put_nowait, item)
 
-    def subscribe(self, loop: Optional[asyncio.AbstractEventLoop] = None) -> Queue[T]:
+    def subscribe(self, loop: Optional[asyncio.AbstractEventLoop] = None) -> Queue:
         with self._lock:
-            queue = Queue[T]()
+            queue = Queue()
             loop = loop or asyncio.get_event_loop()
             self._subscribers.append((queue, loop))
             return queue
 
-    def unsubscribe(self, queue: Queue[T]) -> None:
+    def unsubscribe(self, queue: Queue) -> None:
         with self._lock:
             # looping here is ok, since we don't expect a lot of subscribers
             for i, (q, _) in enumerate(self._subscribers):

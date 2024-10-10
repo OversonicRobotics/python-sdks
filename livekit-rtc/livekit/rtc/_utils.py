@@ -69,13 +69,13 @@ class RingQueue(Generic[T]):
         return self._queue.popleft()
 
 
-class Queue(asyncio.Queue[T]):
+class Queue(asyncio.Queue):
     """asyncio.Queue with utility functions."""
 
     def __init__(self, maxsize: int = 0) -> None:
         super().__init__(maxsize)
 
-    async def wait_for(self, fnc: Callable[[T], bool]) -> T:
+    async def wait_for(self, fnc: Callable) -> T:
         """Wait for an event that matches the given function.
         The previous events are discarded.
         """
@@ -94,7 +94,7 @@ class BroadcastQueue(Generic[T]):
 
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
-        self._subscribers: List[Queue[T]] = []
+        self._subscribers: List[Queue] = []
 
     def len_subscribers(self) -> int:
         return len(self._subscribers)
@@ -103,12 +103,12 @@ class BroadcastQueue(Generic[T]):
         for queue in self._subscribers:
             queue.put_nowait(item)
 
-    def subscribe(self) -> Queue[T]:
-        queue = Queue[T]()
+    def subscribe(self) -> Queue:
+        queue = Queue()
         self._subscribers.append(queue)
         return queue
 
-    def unsubscribe(self, queue: Queue[T]) -> None:
+    def unsubscribe(self, queue: Queue) -> None:
         self._subscribers.remove(queue)
 
     async def join(self) -> None:

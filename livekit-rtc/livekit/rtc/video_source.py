@@ -19,22 +19,24 @@ from .video_frame import VideoFrame
 
 
 class VideoSource:
-    def __init__(self, width: int, height: int) -> None:
+    def __init__(self, width: int = None, height: int = None) -> None:
         req = proto_ffi.FfiRequest()
         req.new_video_source.type = proto_video.VideoSourceType.VIDEO_SOURCE_NATIVE
-        req.new_video_source.resolution.width = width
-        req.new_video_source.resolution.height = height
+        if width:
+            req.new_video_source.resolution.width = width
+        if height:
+            req.new_video_source.resolution.height = height
 
         resp = FfiClient.instance.request(req)
         self._info = resp.new_video_source.source
         self._ffi_handle = FfiHandle(self._info.handle.id)
 
     def capture_frame(
-        self,
-        frame: VideoFrame,
-        *,
-        timestamp_us: int = 0,
-        rotation: proto_video.VideoRotation.ValueType = proto_video.VideoRotation.VIDEO_ROTATION_0,
+            self,
+            frame: VideoFrame,
+            *,
+            timestamp_us: int = 0,
+            rotation: proto_video.VideoRotation.ValueType = proto_video.VideoRotation.VIDEO_ROTATION_0,
     ) -> None:
         req = proto_ffi.FfiRequest()
         req.capture_video_frame.source_handle = self._ffi_handle.handle

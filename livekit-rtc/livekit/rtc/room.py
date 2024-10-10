@@ -65,7 +65,7 @@ class RtcConfiguration:
     continual_gathering_policy: proto_room.ContinualGatheringPolicy.ValueType = (
         proto_room.ContinualGatheringPolicy.GATHER_CONTINUALLY
     )
-    ice_servers: list[proto_room.IceServer] = field(default_factory=list)
+    ice_servers: list = field(default_factory=list)
 
 
 @dataclass
@@ -125,12 +125,12 @@ class Room(EventEmitter[EventTypes]):
 
     def isconnected(self) -> bool:
         return (
-            self._ffi_handle is not None
-            and self.connection_state != ConnectionState.CONN_DISCONNECTED
+                self._ffi_handle is not None
+                and self.connection_state != ConnectionState.CONN_DISCONNECTED
         )
 
     async def connect(
-        self, url: str, token: str, options: RoomOptions = RoomOptions()
+            self, url: str, token: str, options: RoomOptions = RoomOptions()
     ) -> None:
         req = proto_ffi.FfiRequest()
         req.connect.url = url
@@ -415,7 +415,7 @@ class Room(EventEmitter[EventTypes]):
             return self.participants[sid]
 
     def _create_remote_participant(
-        self, owned_info: proto_participant.OwnedParticipant
+            self, owned_info: proto_participant.OwnedParticipant
     ) -> RemoteParticipant:
         if owned_info.info.sid in self.participants:
             raise Exception("participant already exists")
