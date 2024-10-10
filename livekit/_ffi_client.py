@@ -138,52 +138,14 @@ def ffi_event_callback(data_ptr: ctypes.POINTER(ctypes.c_uint8),  # type: ignore
 
     which = event.WhichOneof("message")
     if which == "logs":
-        for record in event.logs.records:
-            level = to_python_level(record.level)
-            debug_env = os.environ.get("LIVEKIT_RTC_DEBUG", "").strip().lower()
-            rtc_debug = debug_env in ("true", "1")
-
-            if level == logging.DEBUG and not rtc_debug:
-                # ignore the rtc debug logs by default
-                if record.target == "libwebrtc" or record.target.startswith("livekit"):
-                    continue
-
-            if level is not None:
-                logger.log(
-                    level,
-                    "%s:%s:%s - %s",
-                    record.target,
-                    record.line,
-                    record.module_path,
-                    record.message,
-                )
-
         return  # no need to queue the logs
     elif which == "panic":
         logger.critical("Panic: %s", event.panic.message)
-        # We are in a unrecoverable state, terminate the process
+        # We are in an unrecoverable state, terminate the process
         os.kill(os.getpid(), signal.SIGTERM)
         return
 
     FfiClient.instance.queue.put(event)
-
-
-def to_python_level(level: proto_ffi.LogLevel.ValueType) -> Optional[int]:
-    if level == proto_ffi.LogLevel.LOG_ERROR:
-        return logging.ERROR
-    elif level == proto_ffi.LogLevel.LOG_WARN:
-        return logging.WARN
-    elif level == proto_ffi.LogLevel.LOG_INFO:
-        return logging.INFO
-    elif level == proto_ffi.LogLevel.LOG_DEBUG:
-        return logging.DEBUG
-    elif level == proto_ffi.LogLevel.LOG_TRACE:
-        # Don't show TRACE logs inside DEBUG, it is too verbos
-        # Python's logging doesn't have a TRACE level
-        # return logging.DEBUG
-        pass
-
-    return None
 
 
 class FfiClient:
