@@ -5,6 +5,14 @@ from typing import Callable, Generic, List, TypeVar
 T = TypeVar('T')
 
 
+class classproperty(object):
+    def __init__(self, f):
+        self.f = classmethod(f)
+
+    def __get__(self, *a):
+        return self.f.__get__(*a)()
+
+
 class RingQueue(Generic[T]):
     def __init__(self, capacity: int = 0) -> None:
         self._capacity = capacity

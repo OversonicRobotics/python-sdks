@@ -11,25 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import importlib
+import signal
 import asyncio
+from contextlib import ExitStack
 import ctypes
 import os
+import logging
 import platform
+import atexit
 import threading
 from typing import Generic, List, Optional, TypeVar
 
-import pkg_resources
-
 from ._proto import ffi_pb2 as proto_ffi
-from ._utils import Queue
+from ._utils import Queue, classproperty
+
+logger = logging.getLogger("livekit")
+
+_resource_files = ExitStack()
+atexit.register(_resource_files.close)
 
 
-def get_ffi_lib_path():
+def get_ffi_lib():
     # allow to override the lib path using an env var
     libpath = os.environ.get("LIVEKIT_LIB_PATH", "").strip()
     if libpath:
-        return libpath
+        return ctypes.CDLL(libpath)
 
     if platform.system() == "Linux":
         libname = "liblivekit_ffi.so"
@@ -40,21 +47,26 @@ def get_ffi_lib_path():
     else:
         raise Exception(
             f"no ffi library found for platform {platform.system()}. \
-                Set LIVEKIT_LIB_PATH to specify a the lib path")
+                Set LIVEKIT_LIB_PATH to specify a the lib path"
+        )
 
-    libpath = pkg_resources.resource_filename(
-        'livekit', os.path.join('resources', libname))
-    return libpath
+    res = importlib.resources.files("livekit.rtc.resources") / libname
+    ctx = importlib.resources.as_file(res)
+    path = _resource_files.enter_context(ctx)
+    return ctypes.CDLL(str(path))
 
 
-ffi_lib = ctypes.CDLL(get_ffi_lib_path())
+ffi_lib = get_ffi_lib()
+ffi_cb_fnc = ctypes.CFUNCTYPE(None, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t)
 
 # C function types
+ffi_lib.livekit_ffi_initialize.argtypes = [ffi_cb_fnc, ctypes.c_bool]
+
 ffi_lib.livekit_ffi_request.argtypes = [
     ctypes.POINTER(ctypes.c_ubyte),
     ctypes.c_size_t,
     ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte)),
-    ctypes.POINTER(ctypes.c_size_t)
+    ctypes.POINTER(ctypes.c_size_t),
 ]
 ffi_lib.livekit_ffi_request.restype = ctypes.c_uint64
 
@@ -67,11 +79,19 @@ INVALID_HANDLE = 0
 class FfiHandle:
     def __init__(self, handle: int) -> None:
         self.handle = handle
+        self._disposed = False
 
     def __del__(self):
-        if self.handle != INVALID_HANDLE:
-            assert ffi_lib.livekit_ffi_drop_handle(
-                ctypes.c_uint64(self.handle))
+        self.dispose()
+
+    @property
+    def disposed(self) -> bool:
+        return self._disposed
+
+    def dispose(self) -> None:
+        if self.handle != INVALID_HANDLE and not self._disposed:
+            self._disposed = True
+            assert ffi_lib.livekit_ffi_drop_handle(ctypes.c_uint64(self.handle))
 
 
 T = TypeVar('T')
@@ -80,13 +100,17 @@ T = TypeVar('T')
 class FfiQueue(Generic[T]):
     def __init__(self) -> None:
         self._lock = threading.RLock()
-        self._subscribers: List[tuple[
-            Queue[T], asyncio.AbstractEventLoop]] = []
+        self._subscribers: List[tuple[Queue[T], asyncio.AbstractEventLoop]] = []
 
     def put(self, item: T) -> None:
         with self._lock:
             for queue, loop in self._subscribers:
-                loop.call_soon_threadsafe(queue.put_nowait, item)
+                try:
+                    loop.call_soon_threadsafe(queue.put_nowait, item)
+                except Exception as e:
+                    # this could happen if user closes the runloop without unsubscribing first
+                    # it's not good when it does occur, but we should not fail the entire runloop
+                    logger.error("error putting to queue: %s", e)
 
     def subscribe(self, loop: Optional[asyncio.AbstractEventLoop] = None) \
             -> Queue:
@@ -108,23 +132,74 @@ class FfiQueue(Generic[T]):
 @ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t)
 def ffi_event_callback(data_ptr: ctypes.POINTER(ctypes.c_uint8),  # type: ignore
                        data_len: ctypes.c_size_t) -> None:
-    event_data = bytes(data_ptr[:int(data_len)])
+    event_data = bytes(data_ptr[: int(data_len)])
     event = proto_ffi.FfiEvent()
     event.ParseFromString(event_data)
-    ffi_client.queue.put(event)
+
+    which = event.WhichOneof("message")
+    if which == "logs":
+        for record in event.logs.records:
+            level = to_python_level(record.level)
+            debug_env = os.environ.get("LIVEKIT_RTC_DEBUG", "").strip().lower()
+            rtc_debug = debug_env in ("true", "1")
+
+            if level == logging.DEBUG and not rtc_debug:
+                # ignore the rtc debug logs by default
+                if record.target == "libwebrtc" or record.target.startswith("livekit"):
+                    continue
+
+            if level is not None:
+                logger.log(
+                    level,
+                    "%s:%s:%s - %s",
+                    record.target,
+                    record.line,
+                    record.module_path,
+                    record.message,
+                )
+
+        return  # no need to queue the logs
+    elif which == "panic":
+        logger.critical("Panic: %s", event.panic.message)
+        # We are in a unrecoverable state, terminate the process
+        os.kill(os.getpid(), signal.SIGTERM)
+        return
+
+    FfiClient.instance.queue.put(event)
+
+
+def to_python_level(level: proto_ffi.LogLevel.ValueType) -> Optional[int]:
+    if level == proto_ffi.LogLevel.LOG_ERROR:
+        return logging.ERROR
+    elif level == proto_ffi.LogLevel.LOG_WARN:
+        return logging.WARN
+    elif level == proto_ffi.LogLevel.LOG_INFO:
+        return logging.INFO
+    elif level == proto_ffi.LogLevel.LOG_DEBUG:
+        return logging.DEBUG
+    elif level == proto_ffi.LogLevel.LOG_TRACE:
+        # Don't show TRACE logs inside DEBUG, it is too verbos
+        # Python's logging doesn't have a TRACE level
+        # return logging.DEBUG
+        pass
+
+    return None
 
 
 class FfiClient:
+    _instance: Optional["FfiClient"] = None
+
+    @classproperty
+    def instance(self):
+        if self._instance is None:
+            self._instance = FfiClient()
+        return self._instance
+
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._queue = FfiQueue[proto_ffi.FfiEvent]()
 
-        # initialize request
-        req = proto_ffi.FfiRequest()
-        cb_callback = int(ctypes.cast(
-            ffi_event_callback, ctypes.c_void_p).value)  # type: ignore
-        req.initialize.event_callback_ptr = cb_callback
-        self.request(req)
+        ffi_lib.livekit_ffi_initialize(ffi_event_callback, True)
 
     @property
     def queue(self) -> FfiQueue[proto_ffi.FfiEvent]:
@@ -138,14 +213,13 @@ class FfiClient:
         resp_ptr = ctypes.POINTER(ctypes.c_ubyte)()
         resp_len = ctypes.c_size_t()
         handle = ffi_lib.livekit_ffi_request(
-            data, proto_len, ctypes.byref(resp_ptr), ctypes.byref(resp_len))
+            data, proto_len, ctypes.byref(resp_ptr), ctypes.byref(resp_len)
+        )
+        assert handle != INVALID_HANDLE
 
-        resp_data = bytes(resp_ptr[:resp_len.value])
+        resp_data = bytes(resp_ptr[: resp_len.value])
         resp = proto_ffi.FfiResponse()
         resp.ParseFromString(resp_data)
 
         FfiHandle(handle)
         return resp
-
-
-ffi_client = FfiClient()
