@@ -16,7 +16,7 @@ import signal
 import asyncio
 from contextlib import ExitStack
 import ctypes
-import importlib.resources
+from importlib_resources import files, as_file
 import logging
 import os
 import platform
@@ -51,8 +51,8 @@ def get_ffi_lib():
                 Set LIVEKIT_LIB_PATH to specify a the lib path"
         )
 
-    res = importlib.resources.files("livekit.rtc.resources") / libname
-    ctx = importlib.resources.as_file(res)
+    res = files("livekit.rtc.resources") / libname
+    ctx = as_file(res)
     path = _resource_files.enter_context(ctx)
     return ctypes.CDLL(str(path))
 
@@ -126,8 +126,8 @@ class FfiQueue(Generic[T]):
 
 @ctypes.CFUNCTYPE(None, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t)
 def ffi_event_callback(
-    data_ptr: ctypes.POINTER(ctypes.c_uint8),  # type: ignore
-    data_len: ctypes.c_size_t,
+        data_ptr: ctypes.POINTER(ctypes.c_uint8),  # type: ignore
+        data_len: ctypes.c_size_t,
 ) -> None:
     event_data = bytes(data_ptr[: int(data_len)])
     event = proto_ffi.FfiEvent()
@@ -139,9 +139,9 @@ def ffi_event_callback(
             level = to_python_level(record.level)
             rtc_debug = os.environ.get("LIVEKIT_WEBRTC_DEBUG", "").strip()
             if (
-                record.target == "libwebrtc"
-                and level == logging.DEBUG
-                and rtc_debug.lower() not in ("true", "1")
+                    record.target == "libwebrtc"
+                    and level == logging.DEBUG
+                    and rtc_debug.lower() not in ("true", "1")
             ):
                 continue
 
