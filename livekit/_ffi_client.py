@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from importlib_resources import files
 import importlib.resources
 import signal
 import asyncio
@@ -50,7 +51,7 @@ def get_ffi_lib():
                 Set LIVEKIT_LIB_PATH to specify a the lib path"
         )
 
-    res = importlib.resources.files("livekit.rtc.resources") / libname
+    res = files("livekit.rtc.resources") / libname
     ctx = importlib.resources.as_file(res)
     path = _resource_files.enter_context(ctx)
     return ctypes.CDLL(str(path))

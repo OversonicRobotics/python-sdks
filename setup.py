@@ -38,7 +38,6 @@ class BuildPyCommand(setuptools.command.build_py.build_py):
     """ Download a prebuilt version of livekit_ffi """
 
     def run(self):
-
         download_script = here / 'rust-sdks' / 'download_ffi.py'
         cmd = ['python3', download_script.absolute(), '--output',
                'livekit/resources']
@@ -59,7 +58,6 @@ elif platform.system() == "Darwin":
     libname = "liblivekit_ffi.dylib"
 elif platform.system() == "Windows":
     libname = "livekit_ffi.dll"
-
 
 setuptools.setup(
     name="livekit",
@@ -91,7 +89,8 @@ setuptools.setup(
     python_requires=">=3.7.0",
     install_requires=["pyee>=11.0.0",
                       "protobuf>=3.1.0",
-                      "types-protobuf>=3.1.0"],
+                      "types-protobuf>=3.1.0",
+                      "importlib_resources"],
     package_data={
         "livekit": [f'resources/{libname}', '_proto/*.py'],
     },
