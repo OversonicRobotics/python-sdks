@@ -2,7 +2,7 @@
 requests
 
 # build wheels
-wheel
+wheel==0.43.0
 setuptools
 twine
 auditwheel; sys_platform == 'linux'
