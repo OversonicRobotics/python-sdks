@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._ffi_client import FfiHandle, ffi_client
+from ._ffi_client import FfiHandle, FfiClient
 from ._proto import ffi_pb2 as proto_ffi
 from ._proto import video_frame_pb2 as proto_video_frame
 from .video_frame import VideoFrame
@@ -29,7 +29,7 @@ class VideoSource:
         if height:
             req.new_video_source.resolution.height = height
 
-        resp = ffi_client.request(req)
+        resp = FfiClient.instance.request(req)
         self._info = resp.new_video_source.source
         self._ffi_handle = FfiHandle(self._info.handle.id)
 
@@ -39,4 +39,4 @@ class VideoSource:
         req.capture_video_frame.buffer_handle = frame.buffer._ffi_handle.handle
         req.capture_video_frame.frame.rotation = frame.rotation
         req.capture_video_frame.frame.timestamp_us = frame.timestamp_us
-        ffi_client.request(req)
+        FfiClient.instance.request(req)

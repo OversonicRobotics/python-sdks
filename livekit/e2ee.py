@@ -15,7 +15,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from ._ffi_client import ffi_client
+from ._ffi_client import FfiClient
 from ._proto import e2ee_pb2 as proto_e2ee
 from ._proto import ffi_pb2 as proto_ffi
 
@@ -53,13 +53,13 @@ class KeyProvider:
         req.e2ee.room_handle = self._room_handle
         req.e2ee.set_shared_key.key_index = key_index
         req.e2ee.set_shared_key.shared_key = key
-        ffi_client.request(req)
+        FfiClient.instance.request(req)
 
     def export_shared_key(self, key_index: int) -> bytes:
         req = proto_ffi.FfiRequest()
         req.e2ee.room_handle = self._room_handle
         req.e2ee.get_shared_key.key_index = key_index
-        resp = ffi_client.request(req)
+        resp = FfiClient.instance.request(req)
         key = resp.e2ee.get_shared_key.key
         return key
 
@@ -68,7 +68,7 @@ class KeyProvider:
         req.e2ee.room_handle = self._room_handle
         req.e2ee.ratchet_shared_key.key_index = key_index
 
-        resp = ffi_client.request(req)
+        resp = FfiClient.instance.request(req)
 
         new_key = resp.e2ee.ratchet_shared_key.new_key
         return new_key
@@ -81,14 +81,14 @@ class KeyProvider:
         req.e2ee.set_key.key = key
 
         self.key_index = key_index
-        ffi_client.request(req)
+        FfiClient.instance.request(req)
 
     def export_key(self, participant_identity: str, key_index: int) -> bytes:
         req = proto_ffi.FfiRequest()
         req.e2ee.room_handle = self._room_handle
         req.e2ee.get_key.participant_identity = participant_identity
         req.e2ee.get_key.key_index = key_index
-        resp = ffi_client.request(req)
+        resp = FfiClient.instance.request(req)
         key = resp.e2ee.get_key.key
         return key
 
@@ -98,7 +98,7 @@ class KeyProvider:
         req.e2ee.ratchet_key.participant_identity = participant_identity
         req.e2ee.ratchet_key.key_index = key_index
 
-        resp = ffi_client.request(req)
+        resp = FfiClient.instance.request(req)
         new_key = resp.e2ee.ratchet_key.new_key
         return new_key
 
@@ -131,7 +131,7 @@ class FrameCryptor:
         req.e2ee.room_handle = self._room_handle
         req.e2ee.cryptor_set_enabled.participant_identity = self._participant_identity
         req.e2ee.cryptor_set_enabled.enabled = enabled
-        ffi_client.request(req)
+        FfiClient.instance.request(req)
 
     def set_key_index(self, key_index: int) -> None:
         self._key_index = key_index
@@ -139,7 +139,7 @@ class FrameCryptor:
         req.e2ee.room_handle = self._room_handle
         req.e2ee.cryptor_set_key_index.participant_identity = self._participant_identity
         req.e2ee.cryptor_set_key_index.key_index = key_index
-        ffi_client.request(req)
+        FfiClient.instance.request(req)
 
 
 class E2EEManager:
@@ -165,13 +165,13 @@ class E2EEManager:
         req = proto_ffi.FfiRequest()
         req.e2ee.room_handle = self._room_handle
         req.e2ee.manager_set_enabled.enabled = enabled
-        ffi_client.request(req)
+        FfiClient.instance.request(req)
 
     def frame_cryptors(self) -> List[FrameCryptor]:
         req = proto_ffi.FfiRequest()
         req.e2ee.room_handle = self._room_handle
 
-        resp = ffi_client.request(req)
+        resp = FfiClient.instance.request(req)
         frame_cryptors = []
         for frame_cryptor in resp.e2ee.manager_get_frame_cryptors.frame_cryptors:
             frame_cryptors.append(FrameCryptor(

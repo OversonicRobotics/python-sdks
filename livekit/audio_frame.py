@@ -14,7 +14,7 @@
 
 import ctypes
 
-from ._ffi_client import FfiHandle, ffi_client
+from ._ffi_client import FfiHandle, FfiClient
 from ._proto import audio_frame_pb2 as proto_audio
 from ._proto import ffi_pb2 as proto_ffi
 
@@ -38,7 +38,7 @@ class AudioFrame:
         req.alloc_audio_buffer.num_channels = num_channels
         req.alloc_audio_buffer.samples_per_channel = samples_per_channel
 
-        resp = ffi_client.request(req)
+        resp = FfiClient.instance.request(req)
         return AudioFrame(resp.alloc_audio_buffer.buffer)
 
     def remix_and_resample(self, sample_rate: int, num_channels: int) -> 'AudioFrame':
@@ -48,7 +48,7 @@ class AudioFrame:
         req.new_audio_resampler.CopyFrom(
             proto_audio.NewAudioResamplerRequest())
 
-        resp = ffi_client.request(req)
+        resp = FfiClient.instance.request(req)
         resampler_handle = FfiHandle(
             resp.new_audio_resampler.resampler.handle.id)
 
@@ -59,7 +59,7 @@ class AudioFrame:
         resample_req.remix_and_resample.sample_rate = sample_rate
         resample_req.remix_and_resample.num_channels = num_channels
 
-        resp = ffi_client.request(resample_req)
+        resp = FfiClient.instance.request(resample_req)
         return AudioFrame(resp.remix_and_resample.buffer)
 
     def _proto_info(self) -> proto_audio.AudioFrameBufferInfo:

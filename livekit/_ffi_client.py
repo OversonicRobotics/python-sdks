@@ -59,9 +59,6 @@ def get_ffi_lib():
 ffi_lib = get_ffi_lib()
 ffi_cb_fnc = ctypes.CFUNCTYPE(None, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t)
 
-# C function types
-ffi_lib.livekit_ffi_initialize.argtypes = [ffi_cb_fnc, ctypes.c_bool]
-
 ffi_lib.livekit_ffi_request.argtypes = [
     ctypes.POINTER(ctypes.c_ubyte),
     ctypes.c_size_t,

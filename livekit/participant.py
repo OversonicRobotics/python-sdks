@@ -15,7 +15,7 @@
 import ctypes
 from typing import List, Optional, Union
 
-from ._ffi_client import FfiHandle, ffi_client
+from ._ffi_client import FfiHandle, FfiClient
 from ._proto import ffi_pb2 as proto_ffi
 from ._proto import participant_pb2 as proto_participant
 from ._proto.room_pb2 import DataPacketKind, TrackPublishOptions
@@ -103,12 +103,12 @@ class LocalParticipant(Participant):
             req.publish_data.destination_sids.extend(sids)
 
         try:
-            queue = ffi_client.queue.subscribe()
-            resp = ffi_client.request(req)
+            queue = FfiClient.instance.queue.subscribe()
+            resp = FfiClient.instance.request(req)
             cb = await queue.wait_for(lambda e: e.publish_data.async_id ==
-                                      resp.publish_data.async_id)
+                                                resp.publish_data.async_id)
         finally:
-            ffi_client.queue.unsubscribe(queue)
+            FfiClient.instance.queue.unsubscribe(queue)
 
         if cb.publish_data.error:
             raise PublishDataError(cb.publish_data.error)
@@ -119,12 +119,12 @@ class LocalParticipant(Participant):
         req.update_local_metadata.metadata = metadata
 
         try:
-            queue = ffi_client.queue.subscribe()
-            resp = ffi_client.request(req)
+            queue = FfiClient.instance.queue.subscribe()
+            resp = FfiClient.instance.request(req)
             cb = await queue.wait_for(lambda e: e.update_local_metadata.async_id ==
-                                    resp.update_local_metadata.async_id)
+                                                resp.update_local_metadata.async_id)
         finally:
-            ffi_client.queue.unsubscribe(queue)
+            FfiClient.instance.queue.unsubscribe(queue)
 
     async def update_name(self, name: str) -> None:
         req = proto_ffi.FfiRequest()
@@ -132,13 +132,12 @@ class LocalParticipant(Participant):
         req.update_local_name.name = name
 
         try:
-            queue = ffi_client.queue.subscribe()
-            resp = ffi_client.request(req)
+            queue = FfiClient.instance.queue.subscribe()
+            resp = FfiClient.instance.request(req)
             cb = await queue.wait_for(lambda e: e.update_local_name.async_id ==
-                                    resp.update_local_name.async_id)
+                                                resp.update_local_name.async_id)
         finally:
-            ffi_client.queue.unsubscribe(queue)
-
+            FfiClient.instance.queue.unsubscribe(queue)
 
     async def publish_track(self, track: Track, options: TrackPublishOptions) \
             -> TrackPublication:
@@ -153,9 +152,9 @@ class LocalParticipant(Participant):
 
         try:
             queue = self._room_queue.subscribe()
-            resp = ffi_client.request(req)
+            resp = FfiClient.instance.request(req)
             cb = await queue.wait_for(lambda e: e.publish_track.async_id ==
-                                      resp.publish_track.async_id)
+                                                resp.publish_track.async_id)
 
             if cb.publish_track.error:
                 raise PublishTrackError(cb.publish_track.error)
@@ -177,9 +176,9 @@ class LocalParticipant(Participant):
 
         try:
             queue = self._room_queue.subscribe()
-            resp = ffi_client.request(req)
+            resp = FfiClient.instance.request(req)
             cb = await queue.wait_for(lambda e: e.unpublish_track.async_id ==
-                                      resp.unpublish_track.async_id)
+                                                resp.unpublish_track.async_id)
 
             if cb.unpublish_track.error:
                 raise UnpublishTrackError(cb.unpublish_track.error)

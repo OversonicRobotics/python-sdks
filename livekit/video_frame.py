@@ -14,7 +14,7 @@
 
 import ctypes
 
-from ._ffi_client import FfiHandle, ffi_client
+from ._ffi_client import FfiHandle, FfiClient
 from ._proto import ffi_pb2 as proto_ffi
 from ._proto import video_frame_pb2 as proto_video_frame
 from ._proto.video_frame_pb2 import VideoFormatType, VideoFrameBufferType, VideoRotation
@@ -50,7 +50,7 @@ class VideoFrameBuffer:
         req = proto_ffi.FfiRequest()
         req.to_i420.yuv_handle = self._ffi_handle.handle
 
-        resp = ffi_client.request(req)
+        resp = FfiClient.instance.request(req)
         return I420Buffer(resp.to_i420.buffer)
 
     def to_argb(self, dst: 'ArgbFrame') -> None:
@@ -62,7 +62,7 @@ class VideoFrameBuffer:
         req.to_argb.dst_width = dst.width
         req.to_argb.dst_height = dst.height
 
-        ffi_client.request(req)
+        FfiClient.instance.request(req)
 
     @staticmethod
     def create(owned_info: proto_video_frame.OwnedVideoFrameBuffer) \
@@ -250,7 +250,7 @@ class ArgbFrame:
         req.to_i420.argb.stride = self.width * 4
         req.to_i420.argb.ptr = ctypes.addressof(self.data)
 
-        res = ffi_client.request(req)
+        res = FfiClient.instance.request(req)
         return I420Buffer(res.to_i420.buffer)
 
     @property
