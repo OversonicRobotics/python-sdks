@@ -98,7 +98,7 @@ class FfiHandle:
 T = TypeVar("T")
 
 
-class FfiQueue(Generic):
+class FfiQueue(Generic[T]):
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._subscribers: List[tuple[Queue, asyncio.AbstractEventLoop]] = []
