@@ -51,7 +51,7 @@ def get_ffi_lib():
                 Set LIVEKIT_LIB_PATH to specify a the lib path"
         )
 
-    res = files("livekit.rtc.resources") / libname
+    res = files("resources") / libname
     ctx = importlib.resources.as_file(res)
     path = _resource_files.enter_context(ctx)
     return ctypes.CDLL(str(path))
