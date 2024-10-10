@@ -158,8 +158,6 @@ class FfiClient:
         self._lock = threading.RLock()
         self._queue = FfiQueue[proto_ffi.FfiEvent]()
 
-        ffi_lib.livekit_ffi_initialize(ffi_event_callback, True)
-
     @property
     def queue(self) -> FfiQueue[proto_ffi.FfiEvent]:
         return self._queue
