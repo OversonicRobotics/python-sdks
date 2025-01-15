@@ -16,7 +16,12 @@ import signal
 import asyncio
 from contextlib import ExitStack
 import ctypes
-from importlib_resources import files, as_file
+
+try:
+    import importlib_resources as import_resources
+except ModuleNotFoundError:
+    import importlib.resources as import_resources
+
 import logging
 import os
 import platform
@@ -51,8 +56,8 @@ def get_ffi_lib():
                 Set LIVEKIT_LIB_PATH to specify a the lib path"
         )
 
-    res = files("livekit.rtc.resources") / libname
-    ctx = as_file(res)
+    res = import_resources.files("livekit.rtc.resources") / libname
+    ctx = import_resources.as_file(res)
     path = _resource_files.enter_context(ctx)
     return ctypes.CDLL(str(path))
 
